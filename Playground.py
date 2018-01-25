@@ -16,13 +16,15 @@
 
 import sys
 import logging
+from random import *
 
 class World:
-    def __init__(self, worldSize, goal, organism):
+    def __init__(self, worldSize, goalCount, organism):
         logging.basicConfig(filename='world.log',level=logging.DEBUG)
         logging.info("Initializing world...")
         self.organism = organism
-        self.goal = goal
+        self.goalCount = goalCount
+        self.goals = generateGoals(goalCount,[10,10])
         self.worldSize = worldSize
         self.generateWorldArray()
         self.generateWorldDisplay()
@@ -30,8 +32,9 @@ class World:
 
     def generateWorldArray(self):
         worldArray = [[0 for x in range(self.worldSize[0])] for y in range(self.worldSize[1])]
-        if self.goal.active:
-            worldArray[self.goal.position[0]][self.goal.position[1]] = self.goal.value
+        for goal in self.goals:
+            if goal.active:
+                worldArray[goal.position[0]][goal.position[1]] = goal.value
         worldArray[self.organism.position[0]][self.organism.position[1]] = self.organism.value
 
         self.worldArray = worldArray
@@ -48,6 +51,10 @@ class World:
                     worldDisplay += " x"
                 elif y == 3:
                     worldDisplay += " O"
+                elif y == 4:
+                    worldDisplay += " 0"
+                elif y == 5:
+                    worldDisplay += " T"
                 else:
                     worldDisplay += " -"
             worldDisplay += " |\n"
@@ -73,36 +80,70 @@ class World:
         if key == "q":
             logging.info("Quitting...")
             sys.exit()
-        self.organism.readInput(key, self.worldSize, self.goal)
+        if key == "r":
+            self.reset()
+        self.organism.readInput(key, self.worldSize, self.goals)
 
     def reset(self):
         logging.info('Resetting world...')
+        self.organism.position = self.organism.initialPosition
+        for goal in self.goals:
+            goal.active = True
+        self.organism.__init__(self.organism.initialPosition)
+        self.__init__(self.worldSize, self.goalCount, self.organism)
+        self.update()
 
 class Organism:
     def __init__(self, startingPosition):
+        self.initialPosition = [startingPosition[0], startingPosition[1]]
         self.position = [startingPosition[0], startingPosition[1]]
-        self.value = 1
-        self.size = 1
-    def readInput(self, key, worldSize, goal):
-        if key == "w" and self.position[0] > 0:
-            self.position[0] -= 1
-            logging.info("Moving...")
-        elif key == "a" and self.position[1] > 0:
-            self.position[1] -= 1
-            logging.info("Moving...")
-        elif key == "s" and self.position[0] < worldSize[0] - 1:
-            self.position[0] += 1
-            logging.info("Moving...")
-        elif key == "d" and self.position[1] < worldSize[1] - 1:
-            self.position[1] += 1
-            logging.info("Moving...")
-        elif key == "e" and self.position == goal.position and goal.active:
-            goal.active = False
-            self.size += 1
-            logging.info("Eating... (size: " + str(self.size) + ")")
+        self.hunger = 0
+        self.value = 4
+        self.size = 20
+        self.alive = True
+
+    def readInput(self, key, worldSize, goals):
+        if self.alive:
+            if key == "w" and self.position[0] > 0:
+                self.position[0] -= 1
+                logging.info("Moving...")
+            elif key == "a" and self.position[1] > 0:
+                self.position[1] -= 1
+                logging.info("Moving...")
+            elif key == "s" and self.position[0] < worldSize[0] - 1:
+                self.position[0] += 1
+                logging.info("Moving...")
+            elif key == "d" and self.position[1] < worldSize[1] - 1:
+                self.position[1] += 1
+                logging.info("Moving...")
+            elif key == "e":
+                for goal in goals:
+                    if self.position == goal.position and goal.active:
+                        goal.active = False
+                        self.hunger = 0
+                        self.size = 20
+                        logging.info("Eating... (size: " + str(self.size) + ")")
+
     def update(self):
-        if self.size > 1:
+        if self.hunger < 20:
+            self.hunger += 1
+
+        if self.size > 0:
+            self.size -= 1
+        if self.size > 7:
+            self.value = 4
+        elif self.size > 3:
             self.value = 3
+        else:
+            self.value = 1
+        if self.hunger == 20:
+            self.die()
+        logging.info("Hunger: " + str(self.hunger))
+        logging.info("Size: " + str(self.size))
+
+    def die(self):
+        self.alive = False
+        self.value = 5
 
 class Goal:
     def __init__(self, startingPosition):
@@ -110,10 +151,19 @@ class Goal:
         self.active = True
         self.value = 2
 
+
+def generateGoals(count, worldSize):
+    goals = []
+    for x in range(count):
+        x = randint(0, worldSize[0] - 1)
+        y = randint(0, worldSize[1] - 1)
+        goals.append(Goal([x,y]))
+    return goals
+
 class BrainStage1:
     def __init__(self):
         print("Initializing")
 
-world = World([10,10], Goal([0,4]), Organism([4,0]))
+world = World([10,10], 3, Organism([4,0]))
 while True:
     world.render()
