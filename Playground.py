@@ -14,9 +14,10 @@
 # | - - - - - - - - - - - |
 # | - - - - - - - - - - - |
 
+import time
 import sys
 import logging
-from random import *
+import random
 
 class World:
     def __init__(self, worldSize, goalCount, organisms):
@@ -37,7 +38,8 @@ class World:
             if goal.active:
                 worldArray[goal.position[0]][goal.position[1]] = goal.value
         for organism in self.organisms:
-            worldArray[organism.position[0]][organism.position[1]] = organism.value
+            if organism.alive:
+                worldArray[organism.position[0]][organism.position[1]] = organism.value
 
         self.worldArray = worldArray
 
@@ -62,7 +64,6 @@ class World:
             worldDisplay += " |\n"
 
         worldDisplay = worldDisplay[:worldDisplay.rfind("\n")]
-
         self.worldDisplay = worldDisplay
 
     def render(self):
@@ -95,21 +96,32 @@ class World:
         self.update()
 
 class Organism:
-    def __init__(self, startingPosition, npc):
+    def __init__(self, startingPosition, npc, hasBrain = False):
         self.initialPosition = [startingPosition[0], startingPosition[1]]
         self.position = [startingPosition[0], startingPosition[1]]
+        self.actions = ["w", "a", "s", "d", "e"]
+        self.brain = Brain(self)
+        self.hasBrain = hasBrain
         self.npc = npc
         self.value = 4
         self.size = 20
         self.alive = True
+        self.fitness = 0
 
     def readInput(self, world, worldSize, goals, npcs):
-        key = raw_input("Enter a key: ")
+        key = ""
+        if self.hasBrain:
+            self.brain.think()
+            key = self.brain.decision
+        else:
+            key = raw_input("Enter a key: ")
+
         if key == "q":
             logging.info("Quitting...")
             sys.exit()
-        if key == "r":
+        elif key == "r":
             world.reset()
+
         if self.alive:
             if key == "w" and self.position[0] > 0:
                 self.position[0] -= 1
@@ -130,6 +142,8 @@ class Organism:
                         self.size = 20
                         logging.info("Eating... (size: " + str(self.size) + ")")
 
+            self.fitness += 1
+
     def update(self):
         if self.size > 0:
             self.size -= 1
@@ -146,6 +160,11 @@ class Organism:
     def die(self):
         self.alive = False
         self.value = 5
+        print("Fitness score: " + str(self.fitness) + ", Generation: " + self.generation)
+        key = raw_input("Continue? (y/n): ")
+        if key != "y":
+            logging.info("Quitting...")
+            sys.exit()
 
 class Goal:
     def __init__(self, startingPosition):
@@ -156,17 +175,19 @@ class Goal:
 
 def generateGoals(count, worldSize):
     goals = []
-    for x in range(count):
-        x = randint(0, worldSize[0] - 1)
-        y = randint(0, worldSize[1] - 1)
+    for i in range(count):
+        x = random.randint(0, worldSize[0] - 1)
+        y = random.randint(0, worldSize[1] - 1)
         goals.append(Goal([x,y]))
     return goals
 
 def generateNpcs(count, worldSize):
-    npcs = [Organism([4,0], False)]
-    for x in range(count):
-        x = randint(0, worldSize[0] - 1)
-        y = randint(0, worldSize[1] - 1)
+    x = random.randint(0, worldSize[0] - 1)
+    y = random.randint(0, worldSize[1] - 1)
+    npcs = [Organism([x,y], False, True)]
+    for i in range(count):
+        x = random.randint(0, worldSize[0] - 1)
+        y = random.randint(0, worldSize[1] - 1)
         npcs.append(Organism([x,y], True))
     return npcs
 
@@ -177,9 +198,18 @@ def isTouching(obj1, obj2):
                     return True
     return False
 
-class BrainStage1:
-    def __init__(self):
-        print("Initializing")
+class Brain:
+    def __init__(self, organism):
+        print("Initializing...")
+        self.actions = organism.actions
+        self.decisionChain = []
+    def think(self):
+        print("Thinking...")
+        time.sleep(2)
+        self.decision = random.choice(self.actions)
+        self.decisionChain.append(self.decision)
+
+
 
 world = World([10,10], 3, generateNpcs(1, [10,10]))
 while True:
