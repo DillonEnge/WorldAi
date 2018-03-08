@@ -160,7 +160,7 @@ class Organism:
     def die(self):
         self.alive = False
         self.value = 5
-        print("Fitness score: " + str(self.fitness) + ", Generation: " + self.generation)
+        print("Fitness score: " + str(self.fitness))
         key = raw_input("Continue? (y/n): ")
         if key != "y":
             logging.info("Quitting...")
@@ -202,6 +202,7 @@ class Brain:
     def __init__(self, organism):
         print("Initializing...")
         self.actions = organism.actions
+        organism.generation = 1
         self.decisionChain = []
     def think(self):
         print("Thinking...")
