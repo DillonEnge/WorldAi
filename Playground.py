@@ -21,7 +21,6 @@ import random
 import csv
 
 PLAYABLE = False
-TESTING = True
 
 class World:
     def __init__(self, worldSize, goalCount, organisms):
@@ -29,7 +28,7 @@ class World:
         logging.info("Initializing world...")
         self.organisms = organisms
         self.goalCount = goalCount
-        self.goals = generateGoals(goalCount,worldSize)
+        self.goals = generateGoals(goalCount,worldSize,organisms)
         self.worldSize = worldSize
         self.generateWorldArray()
         self.generateWorldDisplay()
@@ -81,6 +80,9 @@ class World:
         for organism in self.organisms:
             if not organism.npc:
                 organism.update()
+        for goal in self.goals:
+            if goal.active == False:
+                self.goals.remove(goal)
         self.generateWorldArray()
         self.generateWorldDisplay()
 
@@ -100,26 +102,23 @@ class World:
         self.update()
 
 class Organism:
-    DIRECTION = 2
-    DIRECTION_LEFT = 1
-    DIRECTION_UP = 2
-    DIRECTION_RIGHT = 3
-    DIRECTION_DOWN = 4
     ACTIONS = ["w", "a", "s", "d", "e"]
     def __init__(self, startingPosition, npc, brain = None):
         self.initialPosition = [startingPosition[0], startingPosition[1]]
         self.position = [startingPosition[0], startingPosition[1]]
-        self.direction = startingPosition[Organism.DIRECTION]
+        self.direction = "left"
         self.brain = brain
         self.npc = npc
         self.value = 4
         self.size = 20
         self.alive = True
         self.fitness = 0
+        self.eatingPath = []
 
     def readInput(self, world, worldSize, goals, npcs):
         key = ""
         if self.brain:
+            self.visibleGoalAction(goals)
             self.brain.think()
             key = self.brain.decision
         else:
@@ -131,22 +130,28 @@ class Organism:
         elif key == "r":
             world.reset()
 
+        if len(self.eatingPath) > 0:
+            key = self.eatingPath[0]
+            del self.eatingPath[0]
+
+        canMove = self.canMove(goals)
+
         if self.alive:
-            if key == "w" and self.position[0] > 0:
+            if key == "w" and self.position[0] > 0 and canMove[0]:
                 self.position[0] -= 1
-                self.direction = Organism.DIRECTION_UP
+                self.direction = "up"
                 logging.info("Moving...")
-            elif key == "a" and self.position[1] > 0:
+            elif key == "a" and self.position[1] > 0 and canMove[1]:
                 self.position[1] -= 1
-                self.direction = Organism.DIRECTION_LEFT
+                self.direction = "left"
                 logging.info("Moving...")
-            elif key == "s" and self.position[0] < worldSize[0] - 1:
+            elif key == "s" and self.position[0] < worldSize[0] - 1 and canMove[2]:
                 self.position[0] += 1
-                self.direction = Organism.DIRECTION_DOWN
+                self.direction = "down"
                 logging.info("Moving...")
-            elif key == "d" and self.position[1] < worldSize[1] - 1:
+            elif key == "d" and self.position[1] < worldSize[1] - 1 and canMove[3]:
                 self.position[1] += 1
-                self.direction = Organism.DIRECTION_RIGHT
+                self.direction = "right"
                 logging.info("Moving...")
             elif key == "e":
                 for goal in goals:
@@ -155,26 +160,87 @@ class Organism:
                         self.size = 20
                         logging.info("Eating... (size: " + str(self.size) + ")")
                         break
+            elif key[0] == "go" and len(key) > 1:
+                print("FOOOOOOOD!!!") #Temporary so I could see when he was going for the food
+                self.findFastestPath(key)
+                
             if self.brain:
                 self.brain.fitness += 1
-            if TESTING:
-                print(self.canSeeGoal(goals))
 
-    def canSeeGoal(self, goals):
-        for goal in goals:
-            if self.direction == self.DIRECTION_LEFT:
-                if goal.position[1] <= self.position[1]:
-                    return True
-            elif self.direction == self.DIRECTION_UP:
-                if goal.position[0] <= self.position[0]:
-                    return True
-            elif self.direction == self.DIRECTION_RIGHT:
-                if goal.position[1] >= self.position[1]:
-                    return True
-            elif self.direction == self.DIRECTION_DOWN:
-                if goal.position[0] >= self.position[0]:
-                    return True
+    def canSeeGoal(self, goal):
+        if self.direction == "left":
+            if goal.position[1] <= self.position[1]:
+                return True
+        elif self.direction == "up":
+            if goal.position[0] <= self.position[0]:
+                return True
+        elif self.direction == "right":
+            if goal.position[1] >= self.position[1]:
+                return True
+        elif self.direction == "down":
+            if goal.position[0] >= self.position[0]:
+                return True
         return False
+
+    def visibleGoalAction(self, goals):
+        for action in self.brain.actions:
+            if action[0] == "go":
+                self.brain.actions.remove(action)
+        visibleGoals = ["go"]
+        for goal in goals:
+            if self.canSeeGoal(goal):
+                visibleGoals.append([goal.position[0],goal.position[1]])
+        if len(visibleGoals) >= 2:
+            self.brain.actions.append(visibleGoals)
+
+    def findFastestPath(self, key):
+        path = []
+        lowestPathSize = 1000
+        pathSize =0
+        for goal in key:
+                if goal != "go":
+                    yChange = goal[0] - self.position[0]
+                    xChange = goal[1] - self.position[1]
+                    pathSize = abs(xChange) + abs(yChange)
+                    if pathSize < lowestPathSize:
+                        lowestPathSize = pathSize
+                        lowestX = xChange
+                        lowestY = yChange
+        for i in range(lowestPathSize):
+            if lowestX > 0:
+                path.append("d")
+                lowestX -= 1
+            if lowestY > 0:
+                path.append("s")
+                lowestY -= 1
+            if lowestX < 0:
+                path.append("a")
+                lowestX += 1
+            if lowestY < 0:
+                path.append("w")
+                lowestY += 1
+        del path[lowestPathSize-1]
+        path.append("e")
+        self.eatingPath = path
+
+    def canMove(self, goals):
+        canMove = [True, True, True, True]
+        for goal in goals:
+            if goal.position[0] == (self.position[0] - 1):
+                if goal.position[1] == self.position[1]:
+                    canMove[0] = False
+            if goal.position[1] == (self.position[1] - 1):
+                if goal.position[0] == self.position[0]:
+                    canMove[1] = False
+            if goal.position[0] == (self.position[0] + 1):
+                if goal.position[1] == self.position[1]:
+                    canMove[2] = False
+            if goal.position[1] == (self.position[1] + 1):
+                if goal.position[0] == self.position[0]:
+                    canMove[3] = False
+        return canMove
+                    
+
     def update(self):
         if self.size > 0:
             self.size -= 1
@@ -206,24 +272,30 @@ class Goal:
         self.value = 2
 
 
-def generateGoals(count, worldSize):
+def generateGoals(count, worldSize, organisms):
     goals = []
     for i in range(count):
+        spotNotTaken = True
         x = random.randint(0, worldSize[0] - 1)
         y = random.randint(0, worldSize[1] - 1)
-        goals.append(Goal([x,y]))
+        for organism in organisms:
+            if x == organism.position[1] and y == organism.position[0]:
+                spotNotTaken = False
+        if spotNotTaken:
+            goals.append(Goal([x,y]))
+        else:
+            i -= 1
     return goals
 
 def generateNpcs(count, worldSize):
     x = random.randint(0, worldSize[0] - 1)
     y = random.randint(0, worldSize[1] - 1)
-    direction = Organism.DIRECTION_LEFT
     npcs = []
 
     if PLAYABLE:
-        npcs = [Organism([x,y,direction], False)]
+        npcs = [Organism([x,y], False)]
     else:
-        npcs = [Organism([x,y,direction], False, Brain())]
+        npcs = [Organism([x,y], False, Brain())]
 
     for i in range(count):
         x = random.randint(0, worldSize[0] - 1)
