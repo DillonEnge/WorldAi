@@ -34,6 +34,7 @@ class World:
             MEDIUM = " O"
             SMALL = " o"
             DEAD = " T"
+
     def __init__(self, worldSize, goalCount, organisms):
         logging.basicConfig(filename='world.log',level=logging.DEBUG)
         logging.info("Initializing world...")
@@ -61,21 +62,21 @@ class World:
         worldDisplay = ""
 
         for x in self.worldArray:
-            worldDisplay += "|"
+            worldDisplay += self.CHARACTER.WALL
             for y in x:
                 if y == 1:
-                    worldDisplay += " o"
+                    worldDisplay += self.CHARACTER.ORGANISM.SMALL
                 elif y == 2:
-                    worldDisplay += " x"
+                    worldDisplay += self.CHARACTER.FOOD
                 elif y == 3:
-                    worldDisplay += " O"
+                    worldDisplay += self.CHARACTER.ORGANISM.MEDIUM
                 elif y == 4:
-                    worldDisplay += " 0"
+                    worldDisplay += self.CHARACTER.ORGANISM.BIG
                 elif y == 5:
-                    worldDisplay += " T"
+                    worldDisplay += self.CHARACTER.ORGANISM.DEAD
                 else:
-                    worldDisplay += " -"
-            worldDisplay += " |\n"
+                    worldDisplay += self.CHARACTER.SPACE
+            worldDisplay += self.CHARACTER.END_WALL
 
         worldDisplay = worldDisplay[:worldDisplay.rfind("\n")]
         self.worldDisplay = worldDisplay
