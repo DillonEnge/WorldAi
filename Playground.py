@@ -23,6 +23,17 @@ import csv
 PLAYABLE = False
 
 class World:
+    class CHARACTER:
+        END_WALL = " |\n"
+        FOOD = " x"
+        SPACE = " -"
+        WALL = "|"
+
+        class ORGANISM:
+            BIG = " 0"
+            MEDIUM = " O"
+            SMALL = " o"
+            DEAD = " T"
     def __init__(self, worldSize, goalCount, organisms):
         logging.basicConfig(filename='world.log',level=logging.DEBUG)
         logging.info("Initializing world...")
@@ -102,11 +113,27 @@ class World:
         self.update()
 
 class Organism:
-    ACTIONS = ["w", "a", "s", "d", "e"]
+    ACTIONS = ["w", "a", "s", "d"]
+    class DIRECTION:
+        UP=0
+        LEFT=1
+        DOWN=2
+        RIGHT=3
+
+    class INPUT:
+        UP = "w"
+        LEFT = "a"
+        DOWN = "s"
+        RIGHT = "d"
+        EAT = "e"
+        QUIT = "q"
+        RESET = "r"
+        GO = "go"
+
     def __init__(self, startingPosition, npc, brain = None):
         self.initialPosition = [startingPosition[0], startingPosition[1]]
         self.position = [startingPosition[0], startingPosition[1]]
-        self.direction = "left"
+        self.direction = self.DIRECTION.LEFT
         self.brain = brain
         self.npc = npc
         self.value = 4
@@ -124,10 +151,10 @@ class Organism:
         else:
             key = raw_input("Enter a key: ")
 
-        if key == "q":
+        if key == self.INPUT.QUIT:
             logging.info("Quitting...")
             sys.exit()
-        elif key == "r":
+        elif key == self.INPUT.RESET:
             world.reset()
 
         if len(self.eatingPath) > 0:
@@ -137,30 +164,30 @@ class Organism:
         canMove = self.canMove(goals)
 
         if self.alive:
-            if key == "w" and self.position[0] > 0 and canMove[0]:
+            if key == self.INPUT.UP and self.position[0] > 0 and canMove[self.DIRECTION.UP]:
                 self.position[0] -= 1
-                self.direction = "up"
+                self.direction = self.DIRECTION.UP
                 logging.info("Moving...")
-            elif key == "a" and self.position[1] > 0 and canMove[1]:
+            elif key == self.INPUT.LEFT and self.position[1] > 0 and canMove[self.DIRECTION.LEFT]:
                 self.position[1] -= 1
-                self.direction = "left"
+                self.direction = self.DIRECTION.LEFT
                 logging.info("Moving...")
-            elif key == "s" and self.position[0] < worldSize[0] - 1 and canMove[2]:
+            elif key == self.INPUT.DOWN and self.position[0] < worldSize[0] - 1 and canMove[self.DIRECTION.DOWN]:
                 self.position[0] += 1
-                self.direction = "down"
+                self.direction = self.DIRECTION.DOWN
                 logging.info("Moving...")
-            elif key == "d" and self.position[1] < worldSize[1] - 1 and canMove[3]:
+            elif key == self.INPUT.RIGHT and self.position[1] < worldSize[1] - 1 and canMove[self.DIRECTION.RIGHT]:
                 self.position[1] += 1
-                self.direction = "right"
+                self.direction = self.DIRECTION.RIGHT
                 logging.info("Moving...")
-            elif key == "e":
+            elif key == self.INPUT.EAT:
                 for goal in goals:
                     if isTouching(self, goal) and goal.active:
                         goal.active = False
                         self.size = 20
                         logging.info("Eating... (size: " + str(self.size) + ")")
                         break
-            elif key[0] == "go" and len(key) > 1:
+            elif key[0] == self.INPUT.GO and len(key) > 1:
                 print("FOOOOOOOD!!!") #Temporary so I could see when he was going for the food
                 self.findFastestPath(key)
                 
@@ -168,25 +195,25 @@ class Organism:
                 self.brain.fitness += 1
 
     def canSeeGoal(self, goal):
-        if self.direction == "left":
+        if self.direction == self.DIRECTION.LEFT:
             if goal.position[1] <= self.position[1]:
                 return True
-        elif self.direction == "up":
+        elif self.direction == self.DIRECTION.UP:
             if goal.position[0] <= self.position[0]:
                 return True
-        elif self.direction == "right":
+        elif self.direction == self.DIRECTION.RIGHT:
             if goal.position[1] >= self.position[1]:
                 return True
-        elif self.direction == "down":
+        elif self.direction == self.DIRECTION.DOWN:
             if goal.position[0] >= self.position[0]:
                 return True
         return False
 
     def visibleGoalAction(self, goals):
         for action in self.brain.actions:
-            if action[0] == "go":
+            if action[0] == self.INPUT.GO:
                 self.brain.actions.remove(action)
-        visibleGoals = ["go"]
+        visibleGoals = [self.INPUT.GO]
         for goal in goals:
             if self.canSeeGoal(goal):
                 visibleGoals.append([goal.position[0],goal.position[1]])
@@ -196,9 +223,9 @@ class Organism:
     def findFastestPath(self, key):
         path = []
         lowestPathSize = 1000
-        pathSize =0
+        pathSize = 0
         for goal in key:
-                if goal != "go":
+                if goal != self.INPUT.GO:
                     yChange = goal[0] - self.position[0]
                     xChange = goal[1] - self.position[1]
                     pathSize = abs(xChange) + abs(yChange)
@@ -208,19 +235,19 @@ class Organism:
                         lowestY = yChange
         for i in range(lowestPathSize):
             if lowestX > 0:
-                path.append("d")
+                path.append(self.INPUT.RIGHT)
                 lowestX -= 1
             if lowestY > 0:
-                path.append("s")
+                path.append(self.INPUT.DOWN)
                 lowestY -= 1
             if lowestX < 0:
-                path.append("a")
+                path.append(self.INPUT.LEFT)
                 lowestX += 1
             if lowestY < 0:
-                path.append("w")
+                path.append(self.INPUT.UP)
                 lowestY += 1
         del path[lowestPathSize-1]
-        path.append("e")
+        path.append(self.INPUT.EAT)
         self.eatingPath = path
 
     def canMove(self, goals):
