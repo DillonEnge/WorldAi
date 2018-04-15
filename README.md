@@ -8,10 +8,10 @@
 ## Current capability
 <ul>
 <li>One is able to create a world of variable size with a single creature and a single goal.</li>
-<li>One is able to move the creature around and reach/eat the goal and grow.</li>
+<li>The creature is now able to move around randomly and recognize + advance towards goals in his world.</li>
 </ul>
 
 ## Future capability
 <ul>
-<li>One should be able to reproduce with other creatures.</li>
+<li>The creature should be able to reproduce with other creatures.</li>
 </ul>
