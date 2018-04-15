@@ -287,7 +287,6 @@ class Organism:
         self.value = 5
         if self.brain:
             print("Fitness score: " + str(self.brain.fitness))
-            self.brain.uploadDataToHiveMind(self)
         key = raw_input("Continue? (y/n): ")
         if key != "y":
             logging.info("Quitting...")
@@ -346,25 +345,10 @@ class Brain:
         self.decisionChain = []
     def think(self):
         print("Thinking...")
-        time.sleep(2)
+        time.sleep(1)
         self.decision = random.choice(self.actions)
         self.decisionChain.append(self.decision)
-    def uploadDataToHiveMind(self, organism):
-        hiveMind.writeData([str(self.fitness), str(self.decisionChain)])
-    def getDataFromHiveMind(self):
-        hiveMind.accessData()
 
-class HiveMind:
-    def __init__(self):
-        self.data = open("BrainData.csv", "w+")
-    def accessData(self):
-        processedData = csv.reader(self.data, delimiter=",")
-        return processedData
-    def writeData(self, row):
-        csvWriter = csv.writer(self.data, delimiter=",")
-        csvWriter.writerow(row)
-
-hiveMind = HiveMind()
 world = World([10,20], 2, generateNpcs(0, [10,20]))
 while True:
     world.render()
